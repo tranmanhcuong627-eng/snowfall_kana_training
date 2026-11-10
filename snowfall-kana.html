@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Snowfall Kana</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Noto+Sans+JP:wght@500;700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#050a16;--bg2:#101c42;--ink:#f3f8ff;--ice:#d8f0ff;--accent:#5fe0ff;--accent2:#b388ff;--pink:#ff8fd6;--muted:#9bb0d6;--bad:#ff6b81;--good:#64ffc0}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Quicksand',system-ui,sans-serif;background:radial-gradient(ellipse at top,var(--bg2),var(--bg) 70%);color:var(--ink);min-height:100vh;overflow-x:hidden}
+#snowbg{position:fixed;inset:0;pointer-events:none;z-index:0}
+.screen{position:relative;z-index:1;min-height:100vh;display:none;flex-direction:column;align-items:center;padding:24px}
+.screen.active{display:flex}
+h1{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:2.6em;letter-spacing:2px;margin:40px 0 6px;
+ background:linear-gradient(90deg,var(--ice),var(--accent) 45%,var(--accent2) 75%,var(--pink));
+ -webkit-background-clip:text;background-clip:text;color:transparent;
+ filter:drop-shadow(0 0 18px rgba(95,224,255,.45))}
+.sub{color:var(--muted);margin-bottom:30px;font-weight:500;letter-spacing:.3px}
+button{font-family:'Quicksand',sans-serif;background:linear-gradient(160deg,#16244c,#0e1a3a);color:var(--ink);border:1px solid #2a4a7a;padding:13px 24px;border-radius:14px;font-size:1em;font-weight:600;cursor:pointer;margin:6px;transition:.2s cubic-bezier(.2,.8,.3,1);box-shadow:0 2px 10px rgba(0,0,0,.3)}
+button:hover{transform:translateY(-2px);background:linear-gradient(160deg,#1c2e5e,#122250);box-shadow:0 6px 20px rgba(95,224,255,.25),0 0 0 1px var(--accent) inset;border-color:var(--accent)}
+button:active{transform:translateY(0)}
+button.primary{background:linear-gradient(135deg,#2a5fd6,#13b9c9 60%,#0dd9a8);border:none;color:#04121f;font-weight:700;box-shadow:0 4px 18px rgba(95,224,255,.35)}
+button.primary:hover{box-shadow:0 6px 26px rgba(95,224,255,.55);filter:brightness(1.08)}
+.menu{display:flex;flex-direction:column;gap:10px;width:280px}
+.card{background:linear-gradient(160deg,rgba(25,38,75,.75),rgba(10,18,42,.75));backdrop-filter:blur(6px);border:1px solid rgba(95,224,255,.18);border-radius:18px;padding:20px;margin:10px 0;width:100%;max-width:520px;box-shadow:0 8px 30px rgba(0,0,0,.35)}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.opt{padding:9px 16px;border:1px solid #2a4a7a;border-radius:22px;cursor:pointer;color:var(--muted);font-weight:600;transition:.2s}
+.opt:hover{border-color:var(--accent);color:var(--ink)}
+.opt.sel{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04121f;border-color:transparent;font-weight:700;box-shadow:0 0 14px rgba(95,224,255,.4)}
+#gameScreen{padding:0;width:100%;align-items:stretch}
+.hud,.fallzone,.answerbar{width:100%}
+.hud{display:flex;justify-content:space-between;align-items:center;padding:6px 16px;background:rgba(5,10,25,.6);border-bottom:1px solid #1d2c52;z-index:3;position:relative;flex-wrap:wrap;gap:6px;font-size:.82em;font-weight:600}
+.fallzone{position:relative;height:76vh;overflow:hidden;border-bottom:1px solid #1d2c52;background:linear-gradient(180deg,rgba(10,16,36,0),rgba(5,9,22,.4))}
+.kchar{position:absolute;font-family:'Noto Sans JP',sans-serif;font-weight:700;font-size:2.5em;color:var(--ice);text-shadow:0 0 16px var(--accent),0 0 30px rgba(95,224,255,.5),0 2px 4px #000;transition:filter .3s,text-shadow .3s;pointer-events:none}
+.zoneband{position:absolute;left:0;right:0;z-index:1;pointer-events:none}
+#zoneGreen{top:0;height:58%;background:linear-gradient(180deg,rgba(100,255,192,.05),rgba(100,255,192,.08))}
+#zoneYellow{top:58%;height:20%;background:linear-gradient(180deg,rgba(255,210,125,.07),rgba(255,210,125,.1));border-top:1px dashed rgba(255,210,125,.3)}
+#zoneRed{top:78%;height:12%;background:linear-gradient(180deg,rgba(255,107,129,.09),rgba(255,107,129,.14));border-top:1px dashed rgba(255,107,129,.35)}
+#limitLine{position:absolute;left:0;right:0;top:95%;height:0;border-top:2px dashed rgba(255,107,129,.55);z-index:2;box-shadow:0 0 8px rgba(255,107,129,.4)}
+.kchar.z1{color:#ffe3ad;text-shadow:0 0 16px #ffd27d,0 0 26px rgba(255,210,125,.5),0 2px 4px #000}
+.kchar.z2{color:#ffb3bf;text-shadow:0 0 16px var(--bad),0 0 28px rgba(255,107,129,.6),0 2px 4px #000}
+.kchar.pop{animation:pop .55s cubic-bezier(.2,.8,.3,1) forwards}
+.kchar.shake{animation:shake .3s}
+@keyframes pop{0%{opacity:1;transform:scale(1) translateY(0);filter:brightness(1) blur(0)}30%{opacity:1;transform:scale(1.35) translateY(-6px);filter:brightness(2.2) blur(0)}100%{opacity:0;transform:scale(.4) translateY(-34px);filter:brightness(3) blur(6px)}}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.spark{position:absolute;border-radius:50%;pointer-events:none;background:radial-gradient(circle,#fff,var(--accent) 60%,transparent);box-shadow:0 0 10px var(--accent),0 0 2px #fff;animation:sparkFly .7s ease-out forwards}
+@keyframes sparkFly{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.2)}}
+.answerbar{padding:10px;text-align:center;background:linear-gradient(0deg,rgba(5,10,25,.85),rgba(5,10,25,.55))}
+#answerInput{font-family:'Quicksand',sans-serif;font-size:1.3em;font-weight:600;padding:11px 18px;border-radius:14px;border:1px solid #2a4a7a;background:#0a1530;color:#fff;width:220px;text-align:center;letter-spacing:1px}
+#answerInput:focus{outline:none;border-color:var(--accent);box-shadow:0 0 16px rgba(95,224,255,.5)}
+#feedback{min-height:20px;margin-top:6px;font-weight:700}
+#feedback.ok{color:var(--good);text-shadow:0 0 10px rgba(100,255,192,.5)}
+#feedback.bad{color:var(--bad);text-shadow:0 0 10px rgba(255,107,129,.4)}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{padding:8px 10px;border-bottom:1px solid rgba(95,224,255,.12);font-size:.9em;text-align:center}
+th{color:var(--accent);cursor:pointer;font-weight:700;text-transform:uppercase;font-size:.75em;letter-spacing:.5px}
+.tag{padding:3px 10px;border-radius:12px;font-size:.75em;font-weight:700}
+.tag.good{background:rgba(100,255,192,.12);color:var(--good);box-shadow:0 0 8px rgba(100,255,192,.2) inset}
+.tag.mid{background:rgba(255,210,125,.12);color:#ffd27d;box-shadow:0 0 8px rgba(255,210,125,.2) inset}
+.tag.bad{background:rgba(255,107,129,.12);color:var(--bad);box-shadow:0 0 8px rgba(255,107,129,.2) inset}
+.small{font-size:.85em;color:var(--muted)}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:10}
+#modal .card{text-align:center}
+a.linkbtn{color:var(--accent);cursor:pointer;text-decoration:underline;font-size:.85em}
+</style>
+</head>
+<body>
+<canvas id="snowbg"></canvas>
+
+<!-- HOME -->
+<div class="screen active" id="home">
+<h1>❄ SNOWFALL KANA ❄</h1>
+<div class="sub">Học Hiragana &amp; Katakana như tuyết rơi đêm đông</div>
+<div class="menu">
+<button class="primary" onclick="goSetup()">Bắt đầu học</button>
+<button onclick="goSetup(true)">Luyện tập chữ cần ôn</button>
+<button onclick="showHistory()">Lịch sử học tập</button>
+<button onclick="showReference()">📖 Bảng tra cứu</button>
+<button onclick="alert('Gõ đúng cách đọc (romaji) của bất kỳ chữ nào đang rơi rồi nhấn Enter. Chữ càng rơi sâu vào vùng vàng/đỏ thì càng cho thấy bạn nhớ chậm/chưa nhớ chữ đó.')">Hướng dẫn chơi</button>
+</div>
+</div>
+
+<!-- REFERENCE -->
+<div class="screen" id="reference">
+<h1 style="font-size:1.6em">Bảng tra cứu</h1>
+<div class="sub">Xem trước chữ &amp; cách đọc trước khi vào luyện tập</div>
+<div class="card">
+<b>Bảng</b>
+<div class="opts" id="refTypeOpts">
+<div class="opt sel" data-v="hiragana">Hiragana</div>
+<div class="opt" data-v="katakana">Katakana</div>
+<div class="opt" data-v="kanji">Kanji</div>
+<div class="opt" data-v="vocab">Từ vựng JPD113</div>
+</div>
+<div class="opts" id="refFilterOpts" style="margin-top:12px"></div>
+</div>
+<div class="card">
+<table id="refTable"><thead><tr><th>Chữ Nhật</th><th>Romaji</th><th>Nghĩa</th></tr></thead><tbody id="refBody"></tbody></table>
+</div>
+<button onclick="show('home')">Về trang chủ</button>
+</div>
+
+<!-- SETUP -->
+<div class="screen" id="setup">
+<h1 style="font-size:1.6em">Thiết lập lượt chơi</h1>
+<div class="card">
+<b>Bảng chữ cái</b>
+<div class="opts" id="scriptOpts">
+<div class="opt sel" data-v="hiragana">Hiragana</div>
+<div class="opt" data-v="katakana">Katakana</div>
+<div class="opt" data-v="mixed">Hỗn hợp</div>
+<div class="opt" data-v="vocab">Từ vựng JPD113</div>
+<div class="opt" data-v="kanji">Kanji</div>
+</div>
+<div class="opts" id="lessonOpts" style="display:none;margin-top:12px">
+<div class="opt sel" data-v="all">Tất cả (Bài 1–3)</div>
+<div class="opt" data-v="1">Bài 1</div>
+<div class="opt" data-v="2">Bài 2</div>
+<div class="opt" data-v="3">Bài 3</div>
+</div>
+<div class="opts" id="kanjiGroupOpts" style="display:none;margin-top:12px">
+<div class="opt sel" data-v="count">Số đếm &amp; Đơn vị</div>
+<div class="opt sel" data-v="date">Ngày – Tháng – Thứ</div>
+<div class="opt sel" data-v="people">Con người &amp; Trường học</div>
+<div class="opt sel" data-v="lang">Ngôn ngữ &amp; Quốc gia</div>
+<div class="opt sel" data-v="other">Chủ đề khác</div>
+</div>
+</div>
+<div class="card">
+<b>Phạm vi ký tự</b>
+<div class="opts" id="scopeOpts">
+<div class="opt sel" data-v="all">Toàn bộ 46 ký tự</div>
+<div class="opt" data-v="review">Chỉ ký tự cần ôn</div>
+<div class="opt" data-v="rows">Chọn theo hàng</div>
+</div>
+<div class="opts" id="rowOpts" style="display:none;margin-top:12px">
+<div class="opt sel" data-v="a">a</div>
+<div class="opt sel" data-v="k">k</div>
+<div class="opt sel" data-v="s">s</div>
+<div class="opt sel" data-v="t">t</div>
+<div class="opt sel" data-v="n">n</div>
+<div class="opt sel" data-v="h">h</div>
+<div class="opt sel" data-v="m">m</div>
+<div class="opt sel" data-v="y">y</div>
+<div class="opt sel" data-v="r">r</div>
+<div class="opt sel" data-v="w">w</div>
+<div class="opt sel" data-v="nn">ん/ン</div>
+</div>
+</div>
+<div class="card">
+<b>Chế độ chơi</b>
+<div class="opts" id="modeOpts">
+<div class="opt sel" data-v="study">Học tập (chậm)</div>
+<div class="opt" data-v="challenge">Thử thách (nhanh)</div>
+</div>
+</div>
+<button class="primary" onclick="startGame()">Bắt đầu rơi tuyết</button>
+<button onclick="show('home')">Quay lại</button>
+</div>
+
+<!-- GAME -->
+<div class="screen" id="gameScreen">
+<div class="hud">
+<span id="hudScript">Hiragana</span>
+<span>⏱ <span id="hudTime">0:00</span></span>
+<span>✅ <span id="hudCorrect">0</span></span>
+<span>⚡ <span id="hudSpeed">25</span> px/s</span>
+<span><button onclick="togglePause()" id="pauseBtn">Tạm dừng</button><button onclick="confirmEnd()">Kết thúc</button></span>
+</div>
+<div class="fallzone" id="fallzone"><div id="zoneGreen" class="zoneband"></div><div id="zoneYellow" class="zoneband"></div><div id="zoneRed" class="zoneband"></div><div id="limitLine"></div></div>
+<div class="answerbar">
+<div class="small">Nhập cách đọc của bất kỳ ký tự nào đang rơi</div>
+<input id="answerInput" autocomplete="off" placeholder="romaji...">
+<div id="feedback"></div>
+</div>
+</div>
+
+<!-- RESULT -->
+<div class="screen" id="result">
+<h1 style="font-size:1.6em">Tổng kết lượt chơi</h1>
+<div class="card" id="resultSummary"></div>
+<div class="card">
+<table id="resultTable"><thead><tr><th onclick="sortRes('character')">Ký tự</th><th>Đáp án</th><th onclick="sortRes('correctFirst')">Đúng</th><th onclick="sortRes('wrong')">Sai</th><th onclick="sortRes('avg')">PH TB</th><th onclick="sortRes('grade')">Đánh giá</th></tr></thead><tbody id="resultBody"></tbody></table>
+</div>
+<div>
+<button class="primary" onclick="reviewMistakes()">Ôn chữ cần học lại</button>
+<button onclick="replaySame()">Chơi lại cùng bảng</button>
+<button onclick="show('setup')">Chọn bảng khác</button>
+<button onclick="showHistory()">Lịch sử học tập</button>
+<button onclick="show('home')">Về trang chủ</button>
+</div>
+</div>
+
+<!-- HISTORY -->
+<div class="screen" id="history">
+<h1 style="font-size:1.6em">Lịch sử &amp; Ôn tập</h1>
+<div class="card">
+<b>Danh sách ký tự cần ôn tập</b>
+<table id="reviewTable"><thead><tr><th>Ký tự</th><th>Đáp án</th><th>Đúng</th><th>Sai</th><th>Lần gần nhất</th></tr></thead><tbody></tbody></table>
+<a class="linkbtn" onclick="clearHistory()">Xóa toàn bộ lịch sử</a>
+</div>
+<div class="card">
+<b>Các lượt chơi gần đây</b>
+<table id="sessionsTable"><thead><tr><th>Thời gian</th><th>Bảng</th><th>Số câu</th><th>Chính xác</th></tr></thead><tbody></tbody></table>
+</div>
+<button onclick="show('home')">Về trang chủ</button>
+</div>
+
+<div id="modal"><div class="card"><p>Kết thúc lượt chơi hiện tại?</p><button class="primary" onclick="doEnd()">Xác nhận</button><button onclick="modal(false)">Hủy</button></div></div>
+
+<script>
+/* ===== 4. DỮ LIỆU KÝ TỰ (tách riêng khỏi logic) ===== */
+const HIRA=[["a","あ"],["i","い"],["u","う"],["e","え"],["o","お"],["ka","か"],["ki","き"],["ku","く"],["ke","け"],["ko","こ"],["sa","さ"],["shi","し"],["su","す"],["se","せ"],["so","そ"],["ta","た"],["chi","ち"],["tsu","つ"],["te","て"],["to","と"],["na","な"],["ni","に"],["nu","ぬ"],["ne","ね"],["no","の"],["ha","は"],["hi","ひ"],["fu","ふ"],["he","へ"],["ho","ほ"],["ma","ま"],["mi","み"],["mu","む"],["me","め"],["mo","も"],["ya","や"],["yu","ゆ"],["yo","よ"],["ra","ら"],["ri","り"],["ru","る"],["re","れ"],["ro","ろ"],["wa","わ"],["wo","を"],["n","ん"]];
+const KATA=[["a","ア"],["i","イ"],["u","ウ"],["e","エ"],["o","オ"],["ka","カ"],["ki","キ"],["ku","ク"],["ke","ケ"],["ko","コ"],["sa","サ"],["shi","シ"],["su","ス"],["se","セ"],["so","ソ"],["ta","タ"],["chi","チ"],["tsu","ツ"],["te","テ"],["to","ト"],["na","ナ"],["ni","ニ"],["nu","ヌ"],["ne","ネ"],["no","ノ"],["ha","ハ"],["hi","ヒ"],["fu","フ"],["he","ヘ"],["ho","ホ"],["ma","マ"],["mi","ミ"],["mu","ム"],["me","メ"],["mo","モ"],["ya","ヤ"],["yu","ユ"],["yo","ヨ"],["ra","ラ"],["ri","リ"],["ru","ル"],["re","レ"],["ro","ロ"],["wa","ワ"],["wo","ヲ"],["n","ン"]];
+const VARIANTS={shi:["si"],chi:["ti"],tsu:["tu"],fu:["hu"],ji:["zi"]};
+const ROWMAP={a:'a',i:'a',u:'a',e:'a',o:'a',ka:'k',ki:'k',ku:'k',ke:'k',ko:'k',sa:'s',shi:'s',su:'s',se:'s',so:'s',ta:'t',chi:'t',tsu:'t',te:'t',to:'t',na:'n',ni:'n',nu:'n',ne:'n',no:'n',ha:'h',hi:'h',fu:'h',he:'h',ho:'h',ma:'m',mi:'m',mu:'m',me:'m',mo:'m',ya:'y',yu:'y',yo:'y',ra:'r',ri:'r',ru:'r',re:'r',ro:'r',wa:'w',wo:'w',n:'nn'};
+function buildData(list,script){return list.map(([r,c])=>({id:script+"_"+r+"_"+c,character:c,romaji:r,acceptedAnswers:[r,...(VARIANTS[r]||[])],script,category:"basic",row:ROWMAP[r],enabled:true}));}
+const VOCAB=[
+{l:1,j:"わたし",r:"watashi",v:"tôi"},{l:1,j:"(お) なまえ",r:"(o) namae",v:"tên (của bạn)"},{l:1,j:"(お) くに",r:"(o) kuni",v:"đất nước"},{l:1,j:"にほん",r:"nihon",v:"Nhật Bản"},{l:1,j:"アメリカ",r:"amerika",v:"Hoa Kỳ"},{l:1,j:"イタリア",r:"itaria",v:"nước Ý"},{l:1,j:"オーストラリア",r:"ōsutoraria",v:"nước Úc"},{l:1,j:"かんこく",r:"kankoku",v:"Hàn Quốc"},{l:1,j:"タイ",r:"tai",v:"Thái Lan"},{l:1,j:"ちゅうごく",r:"chūgoku",v:"Trung Quốc"},{l:1,j:"ロシア",r:"roshia",v:"Nga"},{l:1,j:"こうこう",r:"kōkō",v:"trung học phổ thông"},{l:1,j:"だいがく",r:"daigaku",v:"đại học"},{l:1,j:"にほんごがっこう",r:"nihongogakkō",v:"trường dạy tiếng Nhật"},{l:1,j:"(お) しごと",r:"(o) shigoto",v:"công việc"},{l:1,j:"がくせい",r:"gakusei",v:"học sinh / sinh viên"},{l:1,j:"せんせい",r:"sensei",v:"giáo viên (cách gọi)"},{l:1,j:"きょうし",r:"kyōshi",v:"giáo viên (nghề nghiệp)"},{l:1,j:"かいしゃいん",r:"kaishain",v:"nhân viên công ty"},{l:1,j:"ベトナム",r:"betonamu",v:"Việt Nam"},{l:1,j:"ブラジル",r:"burajiru",v:"Brazil"},{l:1,j:"しゃいん",r:"shain",v:"nhân viên"},{l:1,j:"どちら",r:"dochira",v:"ở đâu / phía nào"},{l:1,j:"はじめまして",r:"hajimemashite",v:"rất vui được gặp bạn"},{l:1,j:"こちらこそ",r:"kochira koso",v:"tôi cũng vậy"},{l:1,j:"すみません",r:"sumimasen",v:"xin lỗi"},{l:1,j:"はい",r:"hai",v:"vâng"},{l:1,j:"いいえ",r:"iie",v:"không"},
+{l:1,j:"たんじょうび",r:"tanjōbi",v:"sinh nhật"},{l:1,j:"〜がつ",r:"gatsu",v:"tháng"},{l:1,j:"〜にち",r:"nichi",v:"ngày"},{l:1,j:"〜さい",r:"sai",v:"tuổi"},{l:1,j:"いつ",r:"itsu",v:"khi nào"},
+{l:1,j:"しゅみ",r:"shumi",v:"sở thích"},{l:1,j:"スポーツ",r:"supōtsu",v:"thể thao"},{l:1,j:"サッカー",r:"sakkā",v:"bóng đá"},{l:1,j:"テニス",r:"tenisu",v:"quần vợt"},{l:1,j:"すいえい",r:"suiei",v:"bơi lội"},{l:1,j:"えいが",r:"eiga",v:"phim / điện ảnh"},{l:1,j:"おんがく",r:"ongaku",v:"âm nhạc"},{l:1,j:"どくしょ",r:"dokusho",v:"đọc sách"},{l:1,j:"りょこう",r:"ryokō",v:"du lịch"},{l:1,j:"りょうり",r:"ryōri",v:"nấu ăn / món ăn"},{l:1,j:"なん",r:"nan",v:"cái gì"},
+{l:2,j:"ここ",r:"koko",v:"đằng này"},{l:2,j:"そこ",r:"soko",v:"đằng đó"},{l:2,j:"あそこ",r:"asoko",v:"chỗ kia"},{l:2,j:"インフォメーション",r:"infomēshon",v:"thông tin"},{l:2,j:"ＡＴＭ",r:"ētīemu",v:"máy ATM (rút/gửi tiền)"},{l:2,j:"エスカレーター",r:"esukarēta",v:"thang cuốn"},{l:2,j:"エレベーター",r:"erebēta",v:"thang máy"},{l:2,j:"きつえんじょ",r:"kitsuenjo",v:"khu vực hút thuốc"},{l:2,j:"トイレ",r:"toire",v:"nhà vệ sinh"},{l:2,j:"レジ",r:"reji",v:"máy tính tiền"},{l:2,j:"きっさてん",r:"kissaten",v:"quán cà phê"},{l:2,j:"スーパー",r:"sūpā",v:"siêu thị"},{l:2,j:"100えんショップ",r:"hyaku en shoppu",v:"cửa hàng 100 yên"},{l:2,j:"レストラン",r:"resutoran",v:"nhà hàng"},{l:2,j:"ちか",r:"chika",v:"tầng hầm"},{l:2,j:"カメラ",r:"kamera",v:"máy ảnh"},{l:2,j:"けいたいでんわ",r:"keitaidenwa",v:"điện thoại di động"},{l:2,j:"でんしじしょ",r:"denshijisho",v:"từ điển điện tử"},{l:2,j:"パソコン",r:"pasokon",v:"máy vi tính"},{l:2,j:"くつ",r:"kutsu",v:"giày, dép"},{l:2,j:"けしゴム",r:"keshigomu",v:"cục tẩy"},{l:2,j:"ペン",r:"pen",v:"bút"},{l:2,j:"トイレットペーパー",r:"toirettopēpā",v:"giấy vệ sinh"},{l:2,j:"ほん",r:"hon",v:"sách"},{l:2,j:"あぶら",r:"abura",v:"dầu ăn"},{l:2,j:"ケーキ",r:"kēki",v:"bánh"},{l:2,j:"こめ",r:"kome",v:"gạo"},{l:2,j:"たまご",r:"tamago",v:"trứng"},{l:2,j:"パン",r:"pan",v:"bánh mì"},{l:2,j:"みず",r:"mizu",v:"nước"},{l:2,j:"てんいん",r:"ten'in",v:"nhân viên bán hàng"},{l:2,j:"〜かい",r:"kai",v:"tầng"},{l:2,j:"〜や",r:"ya",v:"cửa hàng"},{l:2,j:"どこ",r:"doko",v:"ở đâu"},{l:2,j:"いらっしゃいませ",r:"irasshaimase",v:"chào mừng"},{l:2,j:"ありがとうございます",r:"arigatou gozaimasu",v:"cảm ơn rất nhiều"},{l:2,j:"きょうしつ",r:"kyōshitsu",v:"lớp học"},
+{l:2,j:"これ",r:"kore",v:"cái này"},{l:2,j:"それ",r:"sore",v:"cái đó"},{l:2,j:"あれ",r:"are",v:"cái kia"},{l:2,j:"この",r:"kono",v:"... này"},{l:2,j:"その",r:"sono",v:"... đó"},{l:2,j:"あの",r:"ano",v:"... kia"},{l:2,j:"かばん",r:"kaban",v:"cái cặp"},{l:2,j:"ズボン",r:"zubon",v:"quần dài"},{l:2,j:"Ｔシャツ",r:"T-shatsu",v:"áo thun"},{l:2,j:"とけい",r:"tokei",v:"đồng hồ"},{l:2,j:"〜えん",r:"en",v:"yên (tiền)"},{l:2,j:"いくら",r:"ikura",v:"bao nhiêu tiền"},{l:2,j:"じゃ",r:"ja",v:"vậy thì"},
+{l:2,j:"さかな",r:"sakana",v:"con cá"},{l:2,j:"にく",r:"niku",v:"thịt"},{l:2,j:"ぎゅうにく",r:"gyūniku",v:"thịt bò"},{l:2,j:"とりにく",r:"toriniku",v:"thịt gà"},{l:2,j:"ぶたにく",r:"butaniku",v:"thịt heo"},{l:2,j:"やさい",r:"yasai",v:"rau củ"},{l:2,j:"イチゴ",r:"ichigo",v:"dâu tây"},{l:2,j:"リンゴ",r:"ringo",v:"quả táo"},{l:2,j:"カレー",r:"karē",v:"cà ri"},{l:2,j:"スープ",r:"sūpu",v:"canh, súp"},{l:2,j:"とんかつ",r:"tonkatsu",v:"thịt cốt lết"},{l:2,j:"ハンバーグ",r:"hanbāgu",v:"hamburger"},{l:2,j:"ごはん",r:"gohan",v:"cơm"},{l:2,j:"ライス",r:"raisu",v:"gạo"},{l:2,j:"ジュース",r:"jūsu",v:"nước ép"},{l:2,j:"コーヒー",r:"kōhī",v:"cà phê"},{l:2,j:"こうちゃ",r:"kōcha",v:"trà đen, hồng trà"},{l:2,j:"（お）ちゃ",r:"cha",v:"trà"},{l:2,j:"ビール",r:"bīru",v:"bia"},{l:2,j:"ワイン",r:"wain",v:"rượu vang"},{l:2,j:"インド",r:"indo",v:"Ấn Độ"},{l:2,j:"ドイツ",r:"doitsu",v:"Đức"},{l:2,j:"フランス",r:"furansu",v:"Pháp"},{l:2,j:"さいふ",r:"saifu",v:"bóp, ví"},{l:2,j:"えいご",r:"eigo",v:"tiếng Anh"},{l:2,j:"〜ご",r:"go",v:"tiếng (hậu tố)"},{l:2,j:"だれ",r:"dare",v:"ai"},{l:2,j:"どうぞ",r:"douzo",v:"xin mời"},
+{l:3,j:"いま",r:"ima",v:"bây giờ"},{l:3,j:"ごぜん",r:"gozen",v:"buổi sáng"},{l:3,j:"ごご",r:"gogo",v:"buổi chiều"},{l:3,j:"ひる",r:"hiru",v:"buổi trưa"},{l:3,j:"ぎんこう",r:"ginkou",v:"ngân hàng"},{l:3,j:"たいいくかん",r:"taiikukan",v:"nhà chơi thể thao"},{l:3,j:"としょかん",r:"toshokan",v:"thư viện"},{l:3,j:"びょういん",r:"byouin",v:"bệnh viện"},{l:3,j:"ゆうびんきょく",r:"yuubinkyoku",v:"bưu điện"},{l:3,j:"じゅぎょう",r:"jugyou",v:"giờ học"},{l:3,j:"テスト",r:"tesuto",v:"bài kiểm tra"},{l:3,j:"やすみ",r:"yasumi",v:"giờ nghỉ"},{l:3,j:"じかん",r:"jikan",v:"thời gian"},{l:3,j:"～じ",r:"ji",v:"giờ"},{l:3,j:"～ふん",r:"fun",v:"phút"},{l:3,j:"～じはん",r:"jihan",v:"giờ rưỡi"},{l:3,j:"～ようび",r:"youbi",v:"thứ"},
+{l:3,j:"スケジュール",r:"sukejuuru",v:"lịch làm việc"},{l:3,j:"アルバイト",r:"arubaito",v:"việc làm thêm"},{l:3,j:"スキー",r:"sukii",v:"trượt tuyết"},{l:3,j:"パーティー",r:"paatii",v:"bữa tiệc"},{l:3,j:"バーベキュー",r:"baabekyuu",v:"tiệc thịt nướng"},{l:3,j:"はなび",r:"hanabi",v:"pháo hoa"},{l:3,j:"（お）はなみ",r:"hanami",v:"ngắm hoa"},{l:3,j:"ホームステイ",r:"hoomusutei",v:"nhà trọ người bản xứ"},{l:3,j:"（お）まつり",r:"matsuri",v:"lễ hội"},{l:3,j:"うみ",r:"umi",v:"biển"},{l:3,j:"こうえん",r:"kouen",v:"công viên"},{l:3,j:"さくら",r:"sakura",v:"hoa anh đào"},{l:3,j:"（お）さけ",r:"sake",v:"rượu"},{l:3,j:"（お）すし",r:"sushi",v:"món sushi"},{l:3,j:"バス",r:"basu",v:"xe buýt"},{l:3,j:"（お）べんとう",r:"bentou",v:"cơm hộp"},{l:3,j:"りゅうがくせい",r:"ryuugakusei",v:"du học sinh"},{l:3,j:"はる",r:"haru",v:"mùa xuân"},{l:3,j:"なつ",r:"natsu",v:"mùa hè"},{l:3,j:"あき",r:"aki",v:"mùa thu"},{l:3,j:"ふゆ",r:"fuyu",v:"mùa đông"},{l:3,j:"ゴールデンウィーク",r:"goorudenwiiku",v:"tuần lễ vàng"},{l:3,j:"いきます",r:"ikimasu",v:"đi"},{l:3,j:"かえります",r:"kaerimasu",v:"về"},{l:3,j:"のみます",r:"nomimasu",v:"uống"},{l:3,j:"たべます",r:"tabemasu",v:"ăn"},{l:3,j:"みます",r:"mimasu",v:"xem"},{l:3,j:"します",r:"shimasu",v:"làm"},
+{l:3,j:"あさ",r:"asa",v:"buổi sáng (sớm)"},{l:3,j:"よる",r:"yoru",v:"buổi đêm"},{l:3,j:"まいにち",r:"mainichi",v:"hàng ngày"},{l:3,j:"まいあさ",r:"maiasa",v:"hàng sáng"},{l:3,j:"まいばん",r:"maiban",v:"hàng tối"},{l:3,j:"あさごはん",r:"asagohan",v:"cơm sáng"},{l:3,j:"ひるごはん",r:"hirugohan",v:"cơm trưa"},{l:3,j:"うち",r:"uchi",v:"nhà"},{l:3,j:"かいしゃ",r:"kaisha",v:"công ty"},{l:3,j:"がっこう",r:"gakkou",v:"trường học"},{l:3,j:"コンビニ",r:"konbini",v:"cửa hàng tiện lợi"},{l:3,j:"ぎゅうにゅう",r:"gyuunyuu",v:"sữa bò"},{l:3,j:"くだもの",r:"kudamono",v:"hoa quả"},{l:3,j:"サラダ",r:"sarada",v:"món sa-lát"},{l:3,j:"チーズ",r:"chiizu",v:"pho-mát"},{l:3,j:"インターネット",r:"intaanetto",v:"Internet"},{l:3,j:"しんぶん",r:"shinbun",v:"báo"},{l:3,j:"テレビ",r:"terebi",v:"ti-vi"},{l:3,j:"なにも",r:"nanimo",v:"gì cả"},{l:3,j:"かいます",r:"kaimasu",v:"mua"},{l:3,j:"ききます",r:"kikimasu",v:"nghe"},{l:3,j:"はたらきます",r:"hatarakimasu",v:"làm việc"},{l:3,j:"よみます",r:"yomimasu",v:"đọc"},{l:3,j:"おきます",r:"okimasu",v:"dậy"},{l:3,j:"ねます",r:"nemasu",v:"ngủ"},{l:3,j:"べんきょうします",r:"benkyou shimasu",v:"học"},{l:3,j:"きます",r:"kimasu",v:"đến"}
+];
+function vocabAnswers(w){const set=new Set();[w.v,w.r].forEach(m=>{if(!m)return;m.split('/').forEach(p=>{let t=p.trim().toLowerCase().replace(/[（）()～〜]/g,'').trim();if(t)set.add(t);});});return[...set];}
+function buildVocab(list){return list.map((w,i)=>({id:"vocab_"+i,character:w.j,romaji:w.v,reading:w.r,meaning:w.v,acceptedAnswers:vocabAnswers(w),script:"vocab",lesson:w.l,row:null,enabled:true}));}
+const KANJI_GROUPS={count:'Số đếm & Đơn vị',date:'Ngày – Tháng – Thứ',people:'Con người & Trường học',lang:'Ngôn ngữ & Quốc gia',other:'Chủ đề khác'};
+const KANJI=[
+{g:'count',j:'一',r:'ichi',m:'số một'},{g:'count',j:'二',r:'ni',m:'số hai'},{g:'count',j:'三',r:'san',m:'số ba'},{g:'count',j:'四',r:'shi',m:'số bốn'},{g:'count',j:'五',r:'go',m:'số năm'},{g:'count',j:'六',r:'roku',m:'số sáu'},{g:'count',j:'七',r:'shichi',m:'số bảy'},{g:'count',j:'八',r:'hachi',m:'số tám'},{g:'count',j:'九',r:'kyu',m:'số chín'},{g:'count',j:'十',r:'jyu',m:'số mười'},{g:'count',j:'百',r:'hyaku',m:'một trăm'},{g:'count',j:'千',r:'sen',m:'một nghìn'},{g:'count',j:'万',r:'man',m:'một vạn (10.000)'},{g:'count',j:'円',r:'en',m:'yên (tiền Nhật)'},{g:'count',j:'分',r:'fun',m:'phút'},{g:'count',j:'才',r:'sai',m:'tuổi'},{g:'count',j:'一つ',r:'hitotsu',m:'một cái'},{g:'count',j:'二つ',r:'futatsu',m:'hai cái'},{g:'count',j:'三つ',r:'mittsu',m:'ba cái'},{g:'count',j:'六つ',r:'muttsu',m:'sáu cái'},
+{g:'date',j:'日',r:'nichi',m:'ngày / mặt trời'},{g:'date',j:'月',r:'tsuki/gatsu',m:'tháng / mặt trăng'},{g:'date',j:'時',r:'ji',m:'giờ'},{g:'date',j:'曜',r:'yo',m:'thứ (trong tuần)'},{g:'date',j:'土',r:'to',m:'đất (thứ Bảy)'},{g:'date',j:'金',r:'kin',m:'vàng, tiền (thứ Sáu)'},{g:'date',j:'年',r:'toshi',m:'năm'},{g:'date',j:'今',r:'ima',m:'bây giờ'},{g:'date',j:'今年',r:'kotoshi',m:'năm nay'},{g:'date',j:'月曜日',r:'getsuyobi',m:'thứ Hai'},{g:'date',j:'火曜日',r:'kayobi',m:'thứ Ba'},{g:'date',j:'水曜日',r:'suiyobi',m:'thứ Tư'},{g:'date',j:'木曜日',r:'mokuyobi',m:'thứ Năm'},{g:'date',j:'金曜日',r:'kinyobi',m:'thứ Sáu'},{g:'date',j:'土曜日',r:'doyobi',m:'thứ Bảy'},{g:'date',j:'日曜日',r:'nichiyobi',m:'Chủ Nhật'},
+{g:'people',j:'私',r:'watashi',m:'tôi'},{g:'people',j:'学',r:'gaku',m:'học'},{g:'people',j:'生',r:'sei',m:'sinh, sống'},{g:'people',j:'人',r:'hito',m:'người'},{g:'people',j:'大',r:'dai',m:'to, lớn'},{g:'people',j:'校',r:'kou',m:'trường học'},{g:'people',j:'先生',r:'sensei',m:'giáo viên, thầy/cô'},{g:'people',j:'誕',r:'tan',m:'sinh (ra đời)'},
+{g:'lang',j:'本',r:'hon',m:'sách / gốc, Nhật'},{g:'lang',j:'語',r:'go',m:'ngôn ngữ, tiếng'},{g:'lang',j:'日本語',r:'nihongo',m:'tiếng Nhật'},
+{g:'other',j:'花火',r:'hanabi',m:'pháo hoa'},{g:'other',j:'花',r:'hana',m:'hoa'}
+];
+function buildKanji(list){return list.map((w,i)=>({id:"kanji_"+i,character:w.j,romaji:w.r.split('/')[0],meaning:w.m,acceptedAnswers:w.r.split('/'),script:"kanji",group:w.g,row:null,enabled:true}));}
+const ALLCHARS=[...buildData(HIRA,"hiragana"),...buildData(KATA,"katakana"),...buildVocab(VOCAB),...buildKanji(KANJI)];
+
+/* ===== LƯU TRỮ ===== */
+const LS_KEY="snowfallkana_data_v1";
+function loadStore(){try{const d=JSON.parse(localStorage.getItem(LS_KEY));if(d&&d.charStats&&d.sessions)return d;}catch(e){}return{charStats:{},sessions:[]};}
+function saveStore(){try{localStorage.setItem(LS_KEY,JSON.stringify(store));}catch(e){console.warn("Lỗi lưu dữ liệu",e);}}
+let store=loadStore();
+function getStat(id){if(!store.charStats[id])store.charStats[id]={seen:0,correctFirst:0,correctRetry:0,wrong:0,totalRT:0,rtCount:0,last:null,needsReview:false};return store.charStats[id];}
+
+/* ===== SNOW BG ===== */
+const cv=document.getElementById('snowbg'),ctx=cv.getContext('2d');let flakes=[];
+function resizeCv(){cv.width=innerWidth;cv.height=innerHeight;}
+resizeCv();addEventListener('resize',resizeCv);
+for(let i=0;i<60;i++)flakes.push({x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:Math.random()*2+1,s:Math.random()*.6+.2,o:Math.random()*.5+.2});
+function drawSnow(){ctx.clearRect(0,0,cv.width,cv.height);for(const f of flakes){ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,7);ctx.fillStyle=`rgba(200,230,255,${f.o})`;ctx.fill();f.y+=f.s;if(f.y>cv.height){f.y=-5;f.x=Math.random()*cv.width;}}requestAnimationFrame(drawSnow);}
+drawSnow();
+
+/* ===== NAV ===== */
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+document.querySelectorAll('.opts').forEach(g=>{
+ if(g.id==='rowOpts'||g.id==='kanjiGroupOpts'){g.addEventListener('click',e=>{if(!e.target.classList.contains('opt'))return;e.target.classList.toggle('sel');});return;}
+ g.addEventListener('click',e=>{if(!e.target.classList.contains('opt'))return;[...g.children].forEach(c=>c.classList.remove('sel'));e.target.classList.add('sel');
+  if(g.id==='scopeOpts')document.getElementById('rowOpts').style.display=(e.target.dataset.v==='rows')?'flex':'none';
+  if(g.id==='scriptOpts'){document.getElementById('lessonOpts').style.display=(e.target.dataset.v==='vocab')?'flex':'none';document.getElementById('kanjiGroupOpts').style.display=(e.target.dataset.v==='kanji')?'flex':'none';}});
+});
+function getOpt(id){return document.querySelector('#'+id+' .sel').dataset.v;}
+function getSelectedRows(){return[...document.querySelectorAll('#rowOpts .opt.sel')].map(o=>o.dataset.v);}
+function getSelectedKanjiGroups(){return[...document.querySelectorAll('#kanjiGroupOpts .opt.sel')].map(o=>o.dataset.v);}
+let reviewOnlyFromHome=false;
+function goSetup(review){reviewOnlyFromHome=!!review;show('setup');if(review){document.querySelector('#scopeOpts [data-v=review]').click();}}
+
+/* ===== GAME ENGINE ===== */
+let G=null;
+function startGame(){
+ const script=getOpt('scriptOpts'),scope=getOpt('scopeOpts'),mode=getOpt('modeOpts');
+ let pool;
+ if(script==='vocab'){
+   const lesson=getOpt('lessonOpts');
+   pool=ALLCHARS.filter(c=>c.script==='vocab'&&(lesson==='all'||String(c.lesson)===lesson));
+ }else if(script==='kanji'){
+   const groups=getSelectedKanjiGroups();
+   pool=ALLCHARS.filter(c=>c.script==='kanji'&&groups.includes(c.group));
+ }else{
+   pool=ALLCHARS.filter(c=>c.script!=='vocab'&&c.script!=='kanji'&&(script==='mixed'||c.script===script));
+ }
+ if(scope==='review')pool=pool.filter(c=>{const s=store.charStats[c.id];return s&&s.needsReview;});
+ if(scope==='rows'&&script!=='vocab'&&script!=='kanji'){const rows=getSelectedRows();pool=pool.filter(c=>rows.includes(c.row));}
+ if(pool.length===0){alert(script==='kanji'?'Hãy chọn ít nhất 1 nhóm Kanji để học!':(scope==='rows'?'Hãy chọn ít nhất 1 hàng để học!':'Chưa có ký tự nào cần ôn tập trong bảng này. Hãy học trước!'));show('home');return;}
+ G={pool,queue:shuffle([...pool]),script,mode,state:'playing',startTs:Date.now(),pauseTs:0,pausedTotal:0,elapsedIntervals:0,lastSpawn:0,current:null,wrongCount:0,falling:[],results:{},correctCount:0,processed:0,lastTick:performance.now(),speed:25,fz:null};
+ document.getElementById('hudScript').textContent=script==='mixed'?'Hỗn hợp':(script==='hiragana'?'Hiragana':'Katakana');
+ document.getElementById('hudCorrect').textContent='0';
+ G.fz=document.getElementById('fallzone');G.fz.innerHTML='';
+ show('gameScreen');document.getElementById('answerInput').value='';document.getElementById('answerInput').focus();setFeedback('');
+ requestAnimationFrame(loop);
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function nextFromQueue(){if(G.queue.length===0)G.queue=shuffle([...G.pool]);return G.queue.shift();}
+
+function spawnChar(){
+ const data=nextFromQueue();
+ const el=document.createElement('div');el.className='kchar';el.textContent=data.character;
+ const len=data.character.length;
+ el.style.fontSize=(len<=2?2.5:len<=5?1.9:len<=9?1.4:1.05)+'em';
+ const x=10+Math.random()*78;el.style.left=x+'%';el.style.top='-50px';
+ G.fz.appendChild(el);
+ const obj={data,el,y:-50,x,vx:(Math.random()-0.5)*6,state:'falling',spawnTs:Date.now(),wrongTries:0};
+ el.classList.add('sel');
+ G.falling.push(obj);
+ return obj;
+}
+
+const SPEEDCFG={study:{init:20,max:70,accel:.08,spawnMs:2200},challenge:{init:25,max:100,accel:.1,spawnMs:1800}};
+function currentSpeed(){const cfg=SPEEDCFG[G.mode];return Math.min(cfg.init*(1+cfg.accel*G.elapsedIntervals),cfg.max);}
+
+function loop(ts){
+ if(!G||G.state==='completed')return;
+ if(G.state==='paused'){requestAnimationFrame(loop);return;}
+ const dt=(ts-G.lastTick)/1000;G.lastTick=ts;
+ const elapsedSec=(Date.now()-G.startTs-G.pausedTotal)/1000;
+ G.elapsedIntervals=Math.floor(elapsedSec/30);
+ G.speed=currentSpeed();
+ document.getElementById('hudSpeed').textContent=Math.round(G.speed);
+ document.getElementById('hudTime').textContent=fmtTime(elapsedSec);
+ if(ts-G.lastSpawn>SPEEDCFG[G.mode].spawnMs){G.lastSpawn=ts;if(G.falling.length<8)spawnChar();}
+ const zoneH=G.fz.clientHeight,limitY=zoneH*0.95;
+ for(const f of [...G.falling]){
+   if(f.state!=='falling')continue;
+   f.y+=G.speed*dt;f.x+=f.vx*dt*0.15;
+   f.el.style.top=f.y+'px';f.el.style.left=Math.max(2,Math.min(90,f.x))+'%';
+   const z=zoneIndex(f.y,zoneH);
+   f.el.classList.toggle('z1',z===1);f.el.classList.toggle('z2',z===2);
+   if(f.y>=limitY){
+     f.state='passed';f.el.remove();removeFalling(f);
+     const stat=getStat(f.data.id);stat.seen++;stat.wrong=(stat.wrong||0)+1;stat.needsReview=true;stat.last=Date.now();
+     recordResult(f.data,'wrong',null);
+   }
+ }
+ requestAnimationFrame(loop);
+}
+function zoneIndex(y,zoneH){const p=y/zoneH;return p<0.58?0:(p<0.78?1:2);}
+function fmtTime(s){s=Math.max(0,Math.floor(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+
+function togglePause(){
+ if(!G)return;
+ if(G.state==='playing'){G.state='paused';G.pauseTs=Date.now();document.getElementById('pauseBtn').textContent='Tiếp tục';}
+ else if(G.state==='paused'){G.pausedTotal+=Date.now()-G.pauseTs;G.state='playing';G.lastTick=performance.now();document.getElementById('pauseBtn').textContent='Tạm dừng';}
+}
+function setFeedback(msg,cls){const f=document.getElementById('feedback');f.textContent=msg;f.className=cls||'';}
+
+function checkAnswer(){
+ if(!G||G.state!=='playing')return;
+ const input=document.getElementById('answerInput');
+ const val=input.value.trim().toLowerCase();
+ if(val==='')return;
+ const match=G.falling.find(f=>f.state==='falling'&&f.data.acceptedAnswers.includes(val));
+ if(match){
+   const data=match.data,stat=getStat(data.id);
+   const rt=(Date.now()-match.spawnTs)/1000;
+   const zoneH=G.fz.clientHeight,z=zoneIndex(match.y,zoneH);
+   const key=z===0?'correctFirst':(z===1?'correctRetry':'wrong');
+   stat.seen++;stat[key]++;stat.totalRT+=rt;stat.rtCount++;stat.last=Date.now();
+   if(z>0)stat.needsReview=true;
+   recordResult(data,key,rt);
+   match.state='correct';match.el.classList.add('pop');
+   burstSparks(match.el);
+   const zoneMsg=z===0?'Nhớ nhanh 🟢':(z===1?'Hơi chậm 🟡':'Suýt quên 🔴');
+   setFeedback('Chính xác！✨ ('+data.character+') — '+zoneMsg,'ok');
+   G.correctCount++;document.getElementById('hudCorrect').textContent=G.correctCount;
+   setTimeout(()=>{match.el.remove();removeFalling(match);},550);
+ }else{
+   setFeedback('Không khớp với chữ nào đang rơi, thử lại nhé!','bad');
+   G.falling.forEach(f=>{if(f.state==='falling'){f.el.classList.remove('shake');void f.el.offsetWidth;f.el.classList.add('shake');}});
+ }
+ input.value='';
+}
+function removeFalling(obj){const i=G.falling.indexOf(obj);if(i>-1)G.falling.splice(i,1);}
+function burstSparks(sourceEl){
+ const zoneRect=G.fz.getBoundingClientRect(),r=sourceEl.getBoundingClientRect();
+ const cx=r.left-zoneRect.left+r.width/2,cy=r.top-zoneRect.top+r.height/2;
+ const n=10;
+ for(let i=0;i<n;i++){
+   const s=document.createElement('div');s.className='spark';
+   const size=3+Math.random()*4;s.style.width=size+'px';s.style.height=size+'px';
+   s.style.left=cx+'px';s.style.top=cy+'px';
+   const ang=(i/n)*6.28+Math.random()*.5,dist=30+Math.random()*34;
+   s.style.setProperty('--dx',(Math.cos(ang)*dist)+'px');
+   s.style.setProperty('--dy',(Math.sin(ang)*dist)+'px');
+   G.fz.appendChild(s);
+   setTimeout(()=>s.remove(),700);
+ }
+}
+function recordResult(data,outcome,rt){
+ if(!G.results[data.id])G.results[data.id]={character:data.character,romaji:data.romaji,script:data.script,correctFirst:0,correctRetry:0,wrong:0,rtSum:0,rtCount:0};
+ const r=G.results[data.id];
+ if(outcome==='correctFirst')r.correctFirst++;
+ else if(outcome==='correctRetry')r.correctRetry++;
+ else r.wrong++;
+ if(outcome==='missed'){getStat(data.id).needsReview=true;}
+ if(rt!=null){r.rtSum+=rt;r.rtCount++;}
+ G.processed++;
+}
+document.getElementById('answerInput').addEventListener('keydown',e=>{if(e.key==='Enter')checkAnswer();});
+
+function confirmEnd(){if(!G)return;G._wasPlaying=G.state==='playing';if(G._wasPlaying)togglePause();modal(true);}
+function modal(open){document.getElementById('modal').style.display=open?'flex':'none';if(!open&&G&&G._wasPlaying)togglePause();}
+function doEnd(){
+ modal(false);
+ G.state='completed';
+ const sessionTime=(Date.now()-G.startTs-G.pausedTotal)/1000;
+ const vals=Object.values(G.results);
+ const totalProcessed=vals.reduce((a,r)=>a+r.correctFirst+r.correctRetry+r.wrong,0);
+ const totalCorrect=vals.reduce((a,r)=>a+r.correctFirst+r.correctRetry,0);
+ const accuracy=totalProcessed? (totalCorrect/totalProcessed*100):0;
+ const rtVals=vals.reduce((a,r)=>a+r.rtSum,0),rtCnt=vals.reduce((a,r)=>a+r.rtCount,0);
+ const avgRT=rtCnt? (rtVals/rtCnt):0;
+ const session={id:'s'+Date.now(),start:G.startTs,end:Date.now(),script:G.script,mode:G.mode,time:sessionTime,processed:totalProcessed,correctFirst:vals.reduce((a,r)=>a+r.correctFirst,0),correctRetry:vals.reduce((a,r)=>a+r.correctRetry,0),wrong:vals.reduce((a,r)=>a+r.wrong,0),accuracy,avgRT,results:vals};
+ store.sessions.unshift(session);if(store.sessions.length>50)store.sessions.pop();
+ saveStore();
+ renderResult(session);
+ show('result');
+}
+function reviewMistakes(){reviewOnlyFromHome=true;document.querySelector('#scopeOpts [data-v=review]').click();show('setup');}
+function replaySame(){const s=store.sessions[0];document.querySelector(`#scriptOpts [data-v=${s.script}]`).click();document.querySelector('#scopeOpts [data-v=all]').click();document.querySelector(`#modeOpts [data-v=${s.mode}]`).click();startGame();}
+
+let lastResults=[];
+function grade(r){if(r.wrong>0)return'bad';if(r.correctRetry>0)return'mid';return'good';}
+function renderResult(session){
+ document.getElementById('resultSummary').innerHTML=
+ `Thời gian chơi: ${fmtTime(session.time)} &nbsp;|&nbsp; Số câu đã xử lý: ${session.processed}<br>
+ 🟢 Nhớ nhanh: ${session.correctFirst} &nbsp;|&nbsp; 🟡 Nhớ chậm: ${session.correctRetry} &nbsp;|&nbsp; 🔴 Rơi vào vùng đỏ/bỏ lỡ: ${session.wrong}<br>
+ Độ chính xác: ${session.accuracy.toFixed(1)}% &nbsp;|&nbsp; Phản hồi TB: ${session.avgRT?session.avgRT.toFixed(1)+'s':'—'}`;
+ lastResults=session.results.map(r=>({...r,avg:r.rtCount?r.rtSum/r.rtCount:null,grade:grade(r)}));
+ drawResultTable();
+}
+function drawResultTable(){
+ const body=document.getElementById('resultBody');body.innerHTML='';
+ for(const r of lastResults){
+   const g=r.grade==='good'?['🟢 Nhớ tốt','good']:r.grade==='mid'?['🟡 Nên học kỹ hơn','mid']:['🔴 Cần xem lại','bad'];
+   body.innerHTML+=`<tr><td>${r.character}</td><td>${r.romaji}</td><td>${r.correctFirst+r.correctRetry}</td><td>${r.wrong}</td><td>${r.avg?r.avg.toFixed(1)+'s':'—'}</td><td><span class="tag ${g[1]}">${g[0]}</span></td></tr>`;
+ }
+}
+let sortDir={};
+function sortRes(key){sortDir[key]=!sortDir[key];lastResults.sort((a,b)=>{const va=a[key]??0,vb=b[key]??0;return sortDir[key]?(va>vb?1:-1):(va<vb?1:-1);});drawResultTable();}
+
+function showHistory(){
+ const rb=document.querySelector('#reviewTable tbody');rb.innerHTML='';
+ const reviewList=ALLCHARS.filter(c=>store.charStats[c.id]&&store.charStats[c.id].needsReview);
+ if(reviewList.length===0)rb.innerHTML='<tr><td colspan="5" class="small">Chưa có ký tự cần ôn tập 🎉</td></tr>';
+ for(const c of reviewList){const s=store.charStats[c.id];rb.innerHTML+=`<tr><td>${c.character}</td><td>${c.romaji}</td><td>${s.correctFirst+s.correctRetry}</td><td>${s.wrong}</td><td>${s.last?new Date(s.last).toLocaleDateString('vi-VN'):'—'}</td></tr>`;}
+ const sb=document.querySelector('#sessionsTable tbody');sb.innerHTML='';
+ for(const s of store.sessions.slice(0,20)){sb.innerHTML+=`<tr><td>${new Date(s.start).toLocaleString('vi-VN')}</td><td>${s.script}</td><td>${s.processed}</td><td>${s.accuracy.toFixed(0)}%</td></tr>`;}
+ show('history');
+}
+const REF_ROW_LABELS={a:'a',k:'k',s:'s',t:'t',n:'n',h:'h',m:'m',y:'y',r:'r',w:'w',nn:'ん/ン'};
+function showReference(){
+ buildRefFilter(getOpt('refTypeOpts'));
+ renderRefTable();
+ show('reference');
+}
+document.getElementById('refTypeOpts').addEventListener('click',e=>{if(!e.target.classList.contains('opt'))return;setTimeout(()=>{buildRefFilter(e.target.dataset.v);renderRefTable();},0);});
+function buildRefFilter(type){
+ const box=document.getElementById('refFilterOpts');box.innerHTML='';
+ if(type==='hiragana'||type==='katakana'){
+   box.innerHTML=Object.entries(REF_ROW_LABELS).map(([v,l])=>`<div class="opt sel" data-v="${v}">${l}</div>`).join('');
+ }else if(type==='kanji'){
+   box.innerHTML=Object.entries(KANJI_GROUPS).map(([v,l])=>`<div class="opt sel" data-v="${v}">${l}</div>`).join('');
+ }else if(type==='vocab'){
+   box.innerHTML='<div class="opt sel" data-v="all">Tất cả</div><div class="opt" data-v="1">Bài 1</div><div class="opt" data-v="2">Bài 2</div><div class="opt" data-v="3">Bài 3</div>';
+ }
+ box.querySelectorAll('.opt').forEach(o=>o.addEventListener('click',()=>{
+   if(type==='vocab'){box.querySelectorAll('.opt').forEach(x=>x.classList.remove('sel'));o.classList.add('sel');}
+   else o.classList.toggle('sel');
+   renderRefTable();
+ }));
+}
+function renderRefTable(){
+ const type=getOpt('refTypeOpts');
+ const box=document.getElementById('refFilterOpts');
+ const sel=[...box.querySelectorAll('.opt.sel')].map(o=>o.dataset.v);
+ let rows=[];
+ if(type==='vocab'){
+   const lesson=sel[0]||'all';
+   rows=ALLCHARS.filter(c=>c.script==='vocab'&&(lesson==='all'||String(c.lesson)===lesson));
+ }else if(type==='kanji'){
+   rows=ALLCHARS.filter(c=>c.script==='kanji'&&sel.includes(c.group));
+ }else{
+   rows=ALLCHARS.filter(c=>c.script===type&&sel.includes(c.row));
+ }
+ const getRomaji=c=>c.script==='vocab'?c.reading:c.romaji;
+ const getMeaning=c=>c.script==='kanji'?c.meaning:(c.script==='vocab'?c.meaning:'—');
+ document.getElementById('refBody').innerHTML=rows.map(c=>`<tr><td>${c.character}</td><td>${getRomaji(c)}</td><td>${getMeaning(c)}</td></tr>`).join('')||'<tr><td colspan="3" class="small">Chưa chọn mục nào để hiển thị.</td></tr>';
+}
+function clearHistory(){if(confirm('Xóa toàn bộ lịch sử và dữ liệu ôn tập?')){store={charStats:{},sessions:[]};saveStore();showHistory();}}
+</script>
+</body>
+</html>
